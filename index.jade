@@ -1,0 +1,25 @@
+html
+    head
+        link(href='style.css', rel='stylesheet')
+        script(src='EventEmitter.js')
+        script(src='script.js')
+
+    main
+        #leftPanel
+            .toolsContainer
+                .undo
+                .paint
+                .spray
+                .eraser
+            .widthContainer
+                ul
+                    - var n = 2
+                    while n < 8
+                        - n++
+                        li(style="height:" + n + "px",data-stroke-width=n)
+
+
+        #rightPanel
+            <canvas width='502' height='297'></canvas>
+            .lowerScroll
+            #colorContainer
