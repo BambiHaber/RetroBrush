@@ -166,7 +166,7 @@ var MainView = function (options) {
              *  So i actually cheat here, because the eraser is actually paint mode with white color
              *  ..at the moment it would trigger the two events of: white color selection, and paint mode selection
              *  in the future it would have to be different because probably the "toolbox" would contain
-             *  an indication of the selected tool
+             *  an indication of the selected tool, also, maybe an alpha channel would be added
              **/
             this.eventBus.trigger(events.EVENT_PAINT_MODE_SELECTED);
             this.eventBus.trigger(events.EVENT_COLOR_SELECTED, {

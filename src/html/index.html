@@ -1,0 +1,37 @@
+<!DOCTYPE>
+<html lang="en">
+<head>
+    <title>RetroBrush - For the sake of old times</title>
+    <link href="./css/style.css" rel="stylesheet"/>
+    <script src="./js/main.min.js"></script>
+</head>
+<main>
+    <div id="leftPanel">
+        <div class="toolsContainer">
+            <div class="undo">
+            </div>
+            <div class="paint">
+            </div>
+            <div class="spray">
+            </div>
+            <div class="eraser">
+            </div>
+        </div>
+        <div class="widthContainer">
+            <ul>
+                <li style="height:3px" data-stroke-width='3'></li>
+                <li style="height:4px" data-stroke-width='4'></li>
+                <li style="height:5px" data-stroke-width='5'></li>
+                <li style="height:6px" data-stroke-width='6'></li>
+                <li style="height:7px" data-stroke-width='7'></li>
+                <li style="height:8px" data-stroke-width='8'></li>
+            </ul>
+        </div>
+    </div>
+    <div id="rightPanel">
+        <canvas width='502' height='297'></canvas>
+        <div class="lowerScroll"></div>
+        <div id="colorContainer"></div>
+    </div>
+</main>
+</html>
