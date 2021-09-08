@@ -3,7 +3,9 @@ var events = {
     EVENT_PAINT_MODE_SELECTED: "EVENT_PAINT_MODE_SELECTED",
     EVENT_SPRAY_MODE_SELECTED: "EVENT_SPRAY_MODE_SELECTED",
     EVENT_ERASER_SELECTED: "EVENT_ERASER_SELECTED",
-    EVENT_UNDO_SELECTED: "EVENT_UNDO_SELECTED"
+    EVENT_UNDO_SELECTED: "EVENT_UNDO_SELECTED",
+    EVENT_OPEN_FILE_CLICKED: "EVENT_OPEN_FILE_CLICKED",
+    EVENT_SAVE_FILE_CLICKED: "EVENT_SAVE_FILE_CLICKED"
 };
 var colors = [
     "fff",
@@ -43,8 +45,24 @@ var CanvasContextHandler = function (options) {
     this.canvasEl = options.canvasEl;
     this.historyStack = options.historyStack;
 
+    this.canvasEl.setAttribute("height", window.getComputedStyle(this.canvasEl, null).getPropertyValue("height"))
+    this.canvasEl.setAttribute("width", window.innerWidth - document.querySelector('#leftPanel').clientWidth + document.querySelector('#leftPanel').getBoundingClientRect().x);
+    window.addEventListener("resize", (e) => {
+        let imageData = this.canvasEl.toDataURL();
+        var img = new Image();
+        img.onload = () => {
+            this.canvasEl.setAttribute("height", window.getComputedStyle(this.canvasEl, null).getPropertyValue("height"))
+            this.canvasEl.setAttribute("width", window.innerWidth - document.querySelector('#leftPanel').clientWidth + document.querySelector('#leftPanel').getBoundingClientRect().x);
+            this.canvasCtx.drawImage(img, 0, 0, img.width, img.height, 0, 0, this.canvasEl.width, this.canvasEl.height);
+        }
+        img.src = imageData;
+
+    })
+
     // -- Color selection
+
     var onColorSelected = function (model) {
+        document.querySelector("#chosenColor").style = "background-color:#" + model.chosenColor + ";";
         this.canvasCtx.strokeStyle = '#' + model.chosenColor;
     }.bind(this);
 
@@ -62,8 +80,18 @@ var CanvasContextHandler = function (options) {
         }
     }.bind(this);
 
+    var onOpenFileClicked = function (e) {
+        e.currentTarget.parentElement.querySelector('#openFileInput').click()
+    }.bind(this);
+
+    var onSaveFileClicked = function (e) {
+        Alert('tbd!');
+    }.bind(this);
+
     this.eventBus.on(events.EVENT_COLOR_SELECTED, onColorSelected);
     this.eventBus.on(events.EVENT_UNDO_SELECTED, onUndoSelected);
+    this.eventBus.on(events.EVENT_OPEN_FILE_CLICKED, onOpenFileClicked);
+    this.eventBus.on(events.EVENT_SAVE_FILE_CLICKED, onSaveFileClicked);
 };
 
 var MainView = function (options) {
@@ -74,6 +102,9 @@ var MainView = function (options) {
     this.canvasCtx = this.canvasEl.getContext('2d');
     this.widthContainerEl = options.widthContainerEl;
     this.eventBus = options.eventBus;
+    this.navContainerEl = options.navContainerEl;
+    this.openFileEl = options.openFileEl;
+    this.openFileInputEl = options.openFileInputEl;
 
     this.canvasContextHandler = new CanvasContextHandler({
         canvasEl: this.canvasEl,
@@ -100,6 +131,7 @@ var MainView = function (options) {
             this.colorContainerEl.appendChild(colorElement);
         }
     }.bind(this);
+
     var generateCssClasses = function () {
         var cssMarkup = [];
         var style = document.createElement('style');
@@ -123,13 +155,23 @@ var MainView = function (options) {
         }
     }.bind(this);
     var bindMouseEvents = function () {
-        this.eventBus.on(events.EVENT_PAINT_MODE_SELECTED, function () {
+        this.eventBus.on(events.EVENT_PAINT_MODE_SELECTED, function (ev) {
+
+            document.querySelectorAll('.toolsContainer div').forEach((el) => {
+                el.classList.remove('selected');
+            });
+            if (ev['eraser'] && ev['eraser'] === true) {
+                document.querySelector('.eraser').classList.add('selected');
+            } else {
+                ev.classList.add('selected');
+            }
             this.canvasEl.onmousedown = function (e) {
                 saveToHistory(this.canvasEl.toDataURL());
                 this.canvasCtx.beginPath();
                 this.canvasEl.onmousemove = function (evt) {
-                    var x = evt.pageX - this.canvasEl.offsetLeft;
-                    var y = evt.pageY - this.canvasEl.offsetTop;
+                    let rect = this.canvasEl.getBoundingClientRect();
+                    var x = evt.clientX - this.canvasEl.offsetLeft;
+                    var y = evt.clientY - this.canvasEl.offsetTop;
                     this.canvasCtx.lineTo(x, y);
                     this.canvasCtx.stroke();
                 }.bind(this);
@@ -142,7 +184,8 @@ var MainView = function (options) {
             this.canvasEl.onmousemove = null;
         }.bind(this);
 
-        this.eventBus.on(events.EVENT_SPRAY_MODE_SELECTED, function () {
+        this.eventBus.on(events.EVENT_SPRAY_MODE_SELECTED, function (e) {
+            e.classList.add('selected');
             this.canvasEl.onmousedown = function (e) {
                 var dotsDistance = 30; //Can be dynamic in the future choosing big spray or small spray
                 var numberOfDots = Number.parseInt(Math.random() * 30);
@@ -161,18 +204,17 @@ var MainView = function (options) {
             }.bind(this);
         }.bind(this));
 
-        this.eventBus.on(events.EVENT_ERASER_SELECTED, function () {
+        this.eventBus.on(events.EVENT_ERASER_SELECTED, function (ev) {
             /**
              *  So i actually cheat here, because the eraser is actually paint mode with white color
              *  ..at the moment it would trigger the two events of: white color selection, and paint mode selection
              *  in the future it would have to be different because probably the "toolbox" would contain
              *  an indication of the selected tool, also, maybe an alpha channel would be added
              **/
-            this.eventBus.trigger(events.EVENT_PAINT_MODE_SELECTED);
+            this.eventBus.trigger(events.EVENT_PAINT_MODE_SELECTED, {eraser: true});
             this.eventBus.trigger(events.EVENT_COLOR_SELECTED, {
                 chosenColor: colors[0]
             });
-
         }.bind(this));
     }.bind(this);
     var bindWidthButtonsEvents = function () {
@@ -195,25 +237,60 @@ var MainView = function (options) {
          *
          */
         // -- undo --
-        document.querySelector('.undo').addEventListener('click', function () {
-            this.eventBus.trigger(events.EVENT_UNDO_SELECTED);
+        document.querySelector('.undo').addEventListener('click', function (e) {
+            this.eventBus.trigger(events.EVENT_UNDO_SELECTED, e.currentTarget);
         }.bind(this));
 
         // -- paint --
-        document.querySelector('.paint').addEventListener('click', function () {
-            this.eventBus.trigger(events.EVENT_PAINT_MODE_SELECTED);
+        document.querySelector('.paint').addEventListener('click', function (e) {
+            this.eventBus.trigger(events.EVENT_PAINT_MODE_SELECTED, e.currentTarget);
         }.bind(this));
 
         // -- spray --
-        document.querySelector('.spray').addEventListener('click', function () {
-            this.eventBus.trigger(events.EVENT_SPRAY_MODE_SELECTED);
+        document.querySelector('.spray').addEventListener('click', function (e) {
+            this.eventBus.trigger(events.EVENT_SPRAY_MODE_SELECTED, e.currentTarget);
         }.bind(this));
 
         // -- eraser --
-        document.querySelector('.eraser').addEventListener('click', function () {
-            this.eventBus.trigger(events.EVENT_ERASER_SELECTED);
+        document.querySelector('.eraser').addEventListener('click', function (e) {
+            this.eventBus.trigger(events.EVENT_ERASER_SELECTED, e.currentTarget);
         }.bind(this));
     }.bind(this);
+    var bindFileEvents = function () {
+        this.openFileEl.addEventListener('click', function (e) {
+            this.eventBus.trigger(events.EVENT_OPEN_FILE_CLICKED, e.currentTarget);
+        }.bind(this))
+        this.navContainerEl.querySelector('.saveFile').addEventListener('click', function (e) {
+            this.eventBus.trigger(events.EVENT_SAVE_FILE_CLICKED, e.currentTarget);
+        }.bind(this))
+    }.bind(this)
+
+    var bindFileChanges = function () {
+        this.openFileInputEl.addEventListener('change', function (e) {
+            if (e.currentTarget.files && e.currentTarget.files[0]) {
+                var fr = new FileReader();
+                fr.readAsDataURL(e.currentTarget.files[0])
+                fr.onload = () => {
+                    fr.result;   // onload fires after reading is complete
+                    let img = new Image();
+                    img.src = fr.result;
+                    img.onload = () => {
+                        var scale = Math.min(this.canvasEl.width / img.width, this.canvasEl.height / img.height);
+                        // get the top left position of the image
+                        var x = (this.canvasEl.width / 2) - (img.width / 2) * scale;
+                        var y = (this.canvasEl.height / 2) - (img.height / 2) * scale;
+                        this.canvasCtx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+                        /*
+                               this.canvasCtx.drawImage(img, 0, 0, img.width, img.height,
+                                   0, 0, this.canvasEl.width *100 / img.width, this.canvasEl.height *100 / img.height);*/
+                    };
+                }
+            } else {
+                alert("Please select an image file: BMP, PNG, JPG")
+            }
+        }.bind(this))
+    }.bind(this)
 
     generateButtons();
     generateCssClasses();
@@ -222,19 +299,32 @@ var MainView = function (options) {
     bindMouseEvents();
     bindWidthButtonsEvents();
     bindToolsEvents();
+
+    bindFileEvents();
+    bindFileChanges()
+
 };
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    var colorContainerEl = document.querySelector('#colorContainer');
-    var canvasEl = document.querySelector('canvas');
-    var widthContainerEl = document.querySelector('.widthContainer');
+    const colorContainerEl = document.querySelector('#colorContainer');
+    const canvasEl = document.querySelector('canvas');
+    const widthContainerEl = document.querySelector('.widthContainer');
+    const navContainerEl = document.querySelector('nav');
+    const openFileEl = navContainerEl.querySelector('.openFile');
+    const openFileInputEl = navContainerEl.querySelector('#openFileInput');
+    const saveFileEl = navContainerEl.querySelector('.saveFile');
 
-    var eventBus = new EventEmitter();
-    view = new MainView({
+
+    const eventBus = new EventEmitter();
+    window.view = new MainView({
         eventBus: eventBus,
         canvasEl: canvasEl,
         colorContainerEl: colorContainerEl,
-        widthContainerEl: widthContainerEl
+        widthContainerEl: widthContainerEl,
+        navContainerEl: navContainerEl,
+        openFileEl: openFileEl,
+        openFileInputEl: openFileInputEl,
+        saveFileEl: saveFileEl
     });
 });

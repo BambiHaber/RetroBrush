@@ -5,6 +5,22 @@
     <link href="./css/style.css" rel="stylesheet"/>
     <script src="./js/main.min.js"></script>
 </head>
+<header>
+
+    <nav>
+        <ul>
+            <li class="dropdown">File<img class="icon" src="./images/line-angle-down.svg"/>
+                <ul class="dropdown-content">
+                    <li class="openFile">Open</li>
+                    <input type='file' id="openFileInput" hidden accept=".bmp,.jpg,.png"/>
+                    <li class="saveFile">Save</li>
+                </ul>
+
+            </li>
+
+        </ul>
+    </nav>
+</header>
 <main>
     <div id="leftPanel">
         <div class="toolsContainer">
@@ -29,9 +45,9 @@
         </div>
     </div>
     <div id="rightPanel">
-        <canvas width='502' height='297'></canvas>
+        <canvas></canvas>
         <div class="lowerScroll"></div>
-        <div id="colorContainer"></div>
+        <div id="chosenColor"></div><div id="colorContainer"></div>
     </div>
 </main>
 </html>

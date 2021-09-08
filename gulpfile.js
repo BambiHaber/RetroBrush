@@ -67,7 +67,7 @@ task('scripts', function () {
 
 /* Images copy */
 task('images', function () {
-    return gulp.src('./src/images/*.png')
+    return gulp.src('./src/images/*.{png,svg}')
         .pipe(gulp.dest('./dist/images'))
 });
 
